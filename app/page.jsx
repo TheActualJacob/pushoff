@@ -21,11 +21,14 @@ export default function LandingPage() {
   const [joinMode, setJoinMode] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
-  const [matchState, setMatchState] = useState('idle'); // 'idle' | 'searching' | 'matched'
+  const [matchState, setMatchState] = useState('idle'); // 'idle' | 'password' | 'searching' | 'matched'
   const [waitingCount, setWaitingCount] = useState(0);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const nameRef = useRef(null);
   const pollRef = useRef(null);
   const peerIdRef = useRef(null);
+  const passwordRef = useRef(null);
 
   function saveName() {
     const trimmed = name.trim();
@@ -48,11 +51,38 @@ export default function LandingPage() {
     router.push(`/room/${trimmed}`);
   }
 
-  async function handleFindMatch() {
+  function handleFindMatchClick() {
     const n = saveName();
     if (!n) { setError('Enter your name first'); nameRef.current?.focus(); return; }
     setError('');
+    if (localStorage.getItem('pushup:mm-unlocked') === '1') {
+      startMatchmaking(n);
+    } else {
+      setMatchState('password');
+      setTimeout(() => passwordRef.current?.focus(), 50);
+    }
+  }
 
+  function handlePasswordSubmit() {
+    if (passwordInput === 'pushoff123') {
+      localStorage.setItem('pushup:mm-unlocked', '1');
+      setPasswordInput('');
+      setPasswordError('');
+      startMatchmaking(name.trim());
+    } else {
+      setPasswordError('Incorrect password');
+      setPasswordInput('');
+      passwordRef.current?.focus();
+    }
+  }
+
+  function handlePasswordCancel() {
+    setMatchState('idle');
+    setPasswordInput('');
+    setPasswordError('');
+  }
+
+  async function startMatchmaking(n) {
     const peerId = generatePeerId();
     peerIdRef.current = peerId;
     setMatchState('searching');
@@ -138,7 +168,43 @@ export default function LandingPage() {
         {/* Form card */}
         <Card className="p-0 rounded-2xl">
           <CardContent className="p-6 flex flex-col gap-4">
-            {matchState === 'searching' ? (
+            {matchState === 'password' ? (
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold tracking-widest uppercase text-muted-foreground" htmlFor="mm-password">
+                    Access code
+                  </label>
+                  <Input
+                    id="mm-password"
+                    ref={passwordRef}
+                    type="password"
+                    value={passwordInput}
+                    onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(''); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+                    placeholder="Enter access code"
+                    autoComplete="off"
+                    className="h-auto py-3 rounded-xl text-sm font-medium"
+                  />
+                  {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    onClick={handlePasswordSubmit}
+                    className="w-full h-auto py-3 rounded-xl text-sm font-bold tracking-wider uppercase active:scale-[0.97]"
+                  >
+                    Unlock
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handlePasswordCancel}
+                    className="text-xs text-muted-foreground"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : matchState === 'searching' ? (
               <div className="flex flex-col items-center gap-5 py-2">
                 {/* Pulsing ring */}
                 <div className="relative flex items-center justify-center w-16 h-16">
@@ -207,7 +273,7 @@ export default function LandingPage() {
 
                 <div className="flex flex-col gap-2 pt-1">
                   <Button
-                    onClick={handleFindMatch}
+                    onClick={handleFindMatchClick}
                     className="w-full h-auto py-3 rounded-xl text-sm font-bold tracking-wider uppercase active:scale-[0.97]"
                   >
                     Find Match
