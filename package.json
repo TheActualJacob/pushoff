@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "patch-package"
+    "postinstall": ""
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
@@ -30,7 +30,6 @@
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "patch-package": "^8.0.1",
     "tailwindcss": "^4"
   }
 }

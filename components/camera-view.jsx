@@ -21,8 +21,12 @@ export default function CameraView({ onPoses, mirror = true, showSkeleton = true
   const showSkeletonRef = useRef(showSkeleton);
 
   const [status, setStatus] = useState('idle');
-  const [fps, setFps] = useState(0);
+
+  // FPS counter: computed at 1 Hz via ref + direct DOM write to avoid 30 React
+  // renders/sec for the whole CameraView subtree just to show a number.
+  const fpsDisplayRef = useRef(null);
   const fpsTimestamps = useRef([]);
+  const lastFpsUpdateRef = useRef(0);
 
   // Keep refs in sync so the rAF loop doesn't stale-close over them
   useEffect(() => { onPosesRef.current = onPoses; }, [onPoses]);
@@ -51,11 +55,16 @@ export default function CameraView({ onPoses, mirror = true, showSkeleton = true
       try {
         const poses = await detector.estimatePoses(video);
 
-        // FPS tracking
+        // FPS: accumulate timestamps, but only write to DOM once per second.
         const now = performance.now();
         fpsTimestamps.current.push(now);
         fpsTimestamps.current = fpsTimestamps.current.filter((t) => now - t < 1000);
-        setFps(fpsTimestamps.current.length);
+        if (now - lastFpsUpdateRef.current >= 1000) {
+          lastFpsUpdateRef.current = now;
+          if (fpsDisplayRef.current) {
+            fpsDisplayRef.current.textContent = `${fpsTimestamps.current.length} fps`;
+          }
+        }
 
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, vw, vh);
@@ -101,7 +110,6 @@ export default function CameraView({ onPoses, mirror = true, showSkeleton = true
         });
         await video.play();
 
-        // Load detector (heavy — may take a few seconds on first load)
         const { getDetector } = await import('@/lib/pose/detector');
         detectorRef.current = await getDetector();
 
@@ -124,6 +132,9 @@ export default function CameraView({ onPoses, mirror = true, showSkeleton = true
       if (video?.srcObject) {
         video.srcObject.getTracks().forEach((t) => t.stop());
       }
+      // Detector is a module singleton; dispose it so GPU textures aren't
+      // accumulated across navigations.
+      import('@/lib/pose/detector').then(({ disposeDetector }) => disposeDetector());
     };
   }, [runLoop]);
 
@@ -131,7 +142,6 @@ export default function CameraView({ onPoses, mirror = true, showSkeleton = true
 
   return (
     <div className={`relative rounded-xl overflow-hidden bg-black ${className}`}>
-      {/* Camera feed */}
       <video
         ref={videoRef}
         playsInline
@@ -147,14 +157,16 @@ export default function CameraView({ onPoses, mirror = true, showSkeleton = true
         style={{ objectFit: 'cover', ...mirrorStyle }}
       />
 
-      {/* FPS badge */}
+      {/* FPS badge — written directly via ref at 1 Hz, no React re-render */}
       {status === 'ready' && (
-        <div className="absolute top-2 left-2 text-[11px] font-mono tabular-nums text-white/60 bg-black/50 px-2 py-0.5 rounded-full pointer-events-none select-none">
-          {fps} fps
+        <div
+          ref={fpsDisplayRef}
+          className="absolute top-2 left-2 text-[11px] font-mono tabular-nums text-white/60 bg-black/50 px-2 py-0.5 rounded-full pointer-events-none select-none"
+        >
+          — fps
         </div>
       )}
 
-      {/* Loading overlay */}
       {status === 'loading' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70">
           <LoadingSpinner />
@@ -162,7 +174,6 @@ export default function CameraView({ onPoses, mirror = true, showSkeleton = true
         </div>
       )}
 
-      {/* Error overlay */}
       {status === 'error' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80">
           <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

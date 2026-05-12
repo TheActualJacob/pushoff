@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# PUSH — Peer-to-peer pushup competition
 
-## Getting Started
+Real-time multiplayer pushup counter. Each player's browser runs MoveNet pose detection locally; only rep counts travel over a WebRTC DataChannel. No video, no inference, and no game state ever touches a server.
 
-First, run the development server:
+## Stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| UI | shadcn/ui + Tailwind CSS v4 |
+| Pose detection | MoveNet SinglePose Thunder via `@tensorflow-models/pose-detection` |
+| Peer transport | Native `RTCPeerConnection` + `RTCDataChannel` |
+| Signaling | Next.js API route + Vercel KV (polling) |
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Allow camera access on the room page to start detecting reps.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.local.example` to `.env.local` and fill in your credentials:
 
-## Learn More
+```
+CF_TURN_TOKEN_ID=...     # Cloudflare Realtime TURN key id
+CF_TURN_API_TOKEN=...    # Cloudflare API token (TURN:Edit)
+KV_REST_API_URL=...      # Vercel KV
+KV_REST_API_TOKEN=...
+```
 
-To learn more about Next.js, take a look at the following resources:
+TURN and KV are only needed once Phase 3 (signaling + WebRTC) is implemented. The pose detection and local rep counter work without any env vars.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Architecture
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Pose detection runs entirely in the browser via WebGL (WASM fallback). Keypoints never leave the device. Rep counts are broadcast as small JSON messages over an encrypted `RTCDataChannel`.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [`plan.md`](./plan.md) for the full implementation plan.
