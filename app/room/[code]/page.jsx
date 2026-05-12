@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useRef, useState, useEffect, useCallback } from 'react';
+import { use, useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -10,40 +10,12 @@ import Leaderboard from '@/components/leaderboard';
 import ReadyCheck from '@/components/ready-check';
 import Countdown from '@/components/countdown';
 import { createPushupCounter } from '@/lib/pose/pushup-counter';
-import { useGameStore, selectLeaderboard, selectConnectedPeers } from '@/lib/game/store';
+import { useGameStore } from '@/lib/game/store';
 import { useRoom } from '@/lib/game/use-room';
 import { PHASE } from '@/lib/game/phases';
 import { sounds } from '@/lib/sounds';
 
 const CameraView = dynamic(() => import('@/components/camera-view'), { ssr: false });
-
-// ── Debug log panel (press D to toggle) ───────────────────────────────────
-function DebugPanel({ selfId, peers }) {
-  const [show, setShow] = useState(false);
-  const [logs, setLogs] = useState([]);
-  useEffect(() => {
-    const handler = () => setLogs([...(window.__pushLog ?? [])]);
-    window.addEventListener('pushlog', handler);
-    const key = (e) => { if (e.key === 'd' || e.key === 'D') setShow(v => !v); };
-    window.addEventListener('keydown', key);
-    return () => { window.removeEventListener('pushlog', handler); window.removeEventListener('keydown', key); };
-  }, []);
-  if (!show) return (
-    <div className="fixed bottom-2 right-2 text-[10px] text-white/20 select-none z-50">press D for debug</div>
-  );
-  return (
-    <div className="fixed bottom-2 right-2 z-50 w-80 max-h-72 overflow-y-auto rounded-lg bg-black/90 border border-white/10 p-2 text-[10px] font-mono text-green-400">
-      <div className="flex justify-between mb-1">
-        <span className="text-white/50">DEBUG — press D to hide</span>
-        <span className="text-white/40">me: {selfId?.slice(0,6)}</span>
-      </div>
-      <div className="mb-1 text-yellow-300">
-        peers: {JSON.stringify(Object.entries(peers).map(([id,p]) => ({id:id.slice(0,6),conn:p.connected,ready:p.ready})))}
-      </div>
-      {[...logs].reverse().map((l, i) => <div key={i} className="leading-4">{l}</div>)}
-    </div>
-  );
-}
 
 // ── Stable identity helpers ────────────────────────────────────────────────
 
@@ -82,12 +54,22 @@ export default function RoomPage({ params }) {
 
   // Game store
   const {
-    phase, myReps, myReady, peers, duration,
+    phase, myReps, myReady, peers, duration, selfId: storeSelfId, selfName: storeSelfName,
     incrementRep, setMyReady, startLive, finishRound,
     setDuration,
   } = useGameStore();
-  // Derived — use selectors so Object.assign in Zustand never freezes these as stale booleans
-  const leaderboard = useGameStore(selectLeaderboard);
+
+  // Computed inline — never use useGameStore(selector) with a selector that returns
+  // a new array/object every call: Object.is always fails → infinite re-renders (#185).
+  const leaderboard = useMemo(() => {
+    const rows = [
+      { id: storeSelfId, name: storeSelfName || 'You', reps: myReps, isSelf: true },
+      ...Object.entries(peers)
+        .filter(([, p]) => p.connected)
+        .map(([id, p]) => ({ id, name: p.name || id, reps: p.reps, isSelf: false })),
+    ];
+    return rows.sort((a, b) => b.reps - a.reps);
+  }, [storeSelfId, storeSelfName, myReps, peers]);
   const phaseRef = useRef(phase);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
@@ -383,7 +365,6 @@ export default function RoomPage({ params }) {
         </div>
       )}
 
-      <DebugPanel selfId={selfId} peers={peers} />
     </div>
   );
 }
