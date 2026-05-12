@@ -47,6 +47,8 @@ export default function RoomPage({ params }) {
   // Pose / rep counter
   const counterRef = useRef(null);
   const [repState, setRepState] = useState({ count: 0, poseState: 'UP', elbowAngle: null, bodyAligned: null, legsStr: null });
+  const [rejectedReason, setRejectedReason] = useState(null);
+  const rejectedTimerRef = useRef(null);
   const [showSkeleton, setShowSkeleton] = useState(true);
   const [alignmentGate, setAlignmentGate] = useState(true);
   const alignmentGateRef = useRef(alignmentGate);
@@ -133,6 +135,12 @@ export default function RoomPage({ params }) {
       bodyAligned: result.bodyAligned,
       legsStr: result.legsStr,
     });
+
+    if (result.rejectedReason) {
+      setRejectedReason(result.rejectedReason);
+      clearTimeout(rejectedTimerRef.current);
+      rejectedTimerRef.current = setTimeout(() => setRejectedReason(null), 2500);
+    }
 
     // Only count reps during the LIVE phase
     if (phaseRef.current === PHASE.LIVE && result.count > prevCountRef.current) {
@@ -336,6 +344,7 @@ export default function RoomPage({ params }) {
               elbowAngle={repState.elbowAngle}
               bodyAligned={repState.bodyAligned}
               legsStr={repState.legsStr}
+              rejectedReason={rejectedReason}
             />
 
             <div className="space-y-4">

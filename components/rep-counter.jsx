@@ -4,13 +4,29 @@
  * RepCounter — large visual rep display with pose state indicator.
  *
  * Props:
- *   count        — integer rep count
- *   poseState    — 'UP' | 'DOWN'
- *   elbowAngle   — current elbow angle in degrees (null if unknown)
- *   bodyAligned  — boolean (null if gate disabled or confidence too low)
+ *   count          — integer rep count
+ *   poseState      — 'UP' | 'DOWN'
+ *   elbowAngle     — current elbow angle in degrees (null if unknown)
+ *   bodyAligned    — boolean (null if gate disabled or confidence too low)
+ *   legsStr        — boolean (null if not measurable)
+ *   rejectedReason — 'too_fast' | 'wrists_moved' | null
  */
-export default function RepCounter({ count = 0, poseState = 'UP', elbowAngle = null, bodyAligned = null, legsStr = null }) {
+
+const REJECTED_MESSAGES = {
+  too_fast:     'Hold the down position',
+  wrists_moved: 'Keep wrists planted',
+};
+
+export default function RepCounter({
+  count = 0,
+  poseState = 'UP',
+  elbowAngle = null,
+  bodyAligned = null,
+  legsStr = null,
+  rejectedReason = null,
+}) {
   const isDown = poseState === 'DOWN';
+  const rejectedMsg = rejectedReason ? REJECTED_MESSAGES[rejectedReason] ?? 'Bad form' : null;
 
   return (
     <div className="flex flex-col items-center gap-2 select-none">
@@ -42,6 +58,18 @@ export default function RepCounter({ count = 0, poseState = 'UP', elbowAngle = n
           style={{ background: isDown ? 'oklch(0.75 0.17 52)' : 'oklch(0.55 0.005 55)' }}
         />
         {isDown ? 'DOWN' : 'UP'}
+      </div>
+
+      {/* Rejected rep flash — shown for ~2.5s then cleared by parent */}
+      <div
+        className="text-sm font-semibold tracking-wide transition-all duration-300"
+        style={{
+          minHeight: '1.5rem',
+          color: 'oklch(0.75 0.20 30)',
+          opacity: rejectedMsg ? 1 : 0,
+        }}
+      >
+        {rejectedMsg ? `✗ ${rejectedMsg}` : null}
       </div>
 
       {/* Debug info row */}
