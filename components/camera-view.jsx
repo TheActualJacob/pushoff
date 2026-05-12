@@ -12,7 +12,7 @@ import { drawPoses } from '@/components/pose-overlay';
  *   showSkeleton        — draw keypoints + bones on canvas (default true)
  *   className           — extra CSS classes on the wrapper
  */
-export default function CameraView({ onPoses, mirror = true, showSkeleton = true, className = '' }) {
+export default function CameraView({ onPoses, onStream, mirror = true, showSkeleton = true, className = '' }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
@@ -101,6 +101,8 @@ export default function CameraView({ onPoses, mirror = true, showSkeleton = true
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
+
+        onStream?.(stream);
 
         const video = videoRef.current;
         video.srcObject = stream;

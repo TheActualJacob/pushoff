@@ -9,6 +9,7 @@ import RepCounter from '@/components/rep-counter';
 import Leaderboard from '@/components/leaderboard';
 import ReadyCheck from '@/components/ready-check';
 import Countdown from '@/components/countdown';
+import OpponentVideo from '@/components/opponent-video';
 import { createPushupCounter } from '@/lib/pose/pushup-counter';
 import { useGameStore } from '@/lib/game/store';
 import { useRoom } from '@/lib/game/use-room';
@@ -43,6 +44,9 @@ export default function RoomPage({ params }) {
 
   const [selfName, setSelfName] = useState(savedName);
   const [nameConfirmed, setNameConfirmed] = useState(!!savedName);
+
+  // Local camera stream — shared between pose detection (CameraView) and video peers
+  const [localStream, setLocalStream] = useState(null);
 
   // Pose / rep counter
   const counterRef = useRef(null);
@@ -110,11 +114,12 @@ export default function RoomPage({ params }) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Room hook (WebRTC + signaling)
-  const { startAt, connected, toggleReady, broadcastReset } = useRoom({
+  // Room hook (WebRTC + signaling + video peers)
+  const { startAt, connected, remoteStreams, videoStates, toggleReady, broadcastReset } = useRoom({
     code,
     selfId,
     selfName: selfName || selfId,
+    localStream,
   });
 
   // ── Pose loop ─────────────────────────────────────────────────────────────
@@ -313,6 +318,7 @@ export default function RoomPage({ params }) {
 
             <CameraView
               onPoses={onPoses}
+              onStream={setLocalStream}
               showSkeleton={showSkeleton}
               mirror
               className="flex-1"
@@ -348,6 +354,21 @@ export default function RoomPage({ params }) {
             />
 
             <div className="space-y-4">
+              {/* Opponent video tiles — shown whenever a peer is connected */}
+              {connectedPeerList.length > 0 && (
+                <div className="space-y-2">
+                  {connectedPeerList.map((peer) => (
+                    <OpponentVideo
+                      key={peer.id}
+                      stream={remoteStreams[peer.id] ?? null}
+                      videoState={videoStates[peer.id] ?? null}
+                      name={peer.name || peer.id}
+                      reps={peer.reps ?? 0}
+                    />
+                  ))}
+                </div>
+              )}
+
               <hr className="border-t border-border/50" />
 
               {/* LOBBY: ready check */}
