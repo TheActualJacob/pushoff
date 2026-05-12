@@ -9,7 +9,7 @@
  *   elbowAngle   — current elbow angle in degrees (null if unknown)
  *   bodyAligned  — boolean (null if gate disabled or confidence too low)
  */
-export default function RepCounter({ count = 0, poseState = 'UP', elbowAngle = null, bodyAligned = null }) {
+export default function RepCounter({ count = 0, poseState = 'UP', elbowAngle = null, bodyAligned = null, legsStr = null }) {
   const isDown = poseState === 'DOWN';
 
   return (
@@ -45,7 +45,7 @@ export default function RepCounter({ count = 0, poseState = 'UP', elbowAngle = n
       </div>
 
       {/* Debug info row */}
-      {(elbowAngle !== null || bodyAligned !== null) && (
+      {(elbowAngle !== null || bodyAligned !== null || legsStr !== null) && (
         <div className="flex gap-3 text-xs font-mono text-white/30">
           {elbowAngle !== null && (
             <span>{elbowAngle}° elbow</span>
@@ -53,6 +53,11 @@ export default function RepCounter({ count = 0, poseState = 'UP', elbowAngle = n
           {bodyAligned !== null && (
             <span style={{ color: bodyAligned ? 'oklch(0.7 0.18 130 / 0.6)' : 'oklch(0.65 0.22 30 / 0.7)' }}>
               {bodyAligned ? '✓ aligned' : '⚠ align body'}
+            </span>
+          )}
+          {legsStr !== null && (
+            <span style={{ color: legsStr ? 'oklch(0.7 0.18 130 / 0.6)' : 'oklch(0.65 0.22 30 / 0.7)' }}>
+              {legsStr ? '✓ legs straight' : '⚠ straighten legs'}
             </span>
           )}
         </div>
