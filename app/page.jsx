@@ -21,7 +21,7 @@ export default function LandingPage() {
 
   function saveName() {
     const trimmed = name.trim();
-    if (trimmed) localStorage.setItem('pushup_name', trimmed);
+    if (trimmed) localStorage.setItem('pushup:name', trimmed);
     return trimmed;
   }
 
@@ -41,7 +41,7 @@ export default function LandingPage() {
   }
 
   useEffect(() => {
-    const saved = localStorage.getItem('pushup_name');
+    const saved = localStorage.getItem('pushup:name');
     if (saved) setName(saved);
   }, []);
 
